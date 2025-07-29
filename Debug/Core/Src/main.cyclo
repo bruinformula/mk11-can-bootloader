@@ -1,0 +1,9 @@
+../Core/Src/main.c:83:6:check_bootmode	1
+../Core/Src/main.c:88:6:go_to_application	1
+../Core/Src/main.c:98:6:HAL_CAN_RxFifo0MsgPendingCallback	2
+../Core/Src/main.c:106:6:process_command	3
+../Core/Src/main.c:114:6:send_ack_message	1
+../Core/Src/main.c:126:6:flash_firmware	1
+../Core/Src/main.c:136:5:main	1
+../Core/Src/main.c:218:6:SystemClock_Config	4
+../Core/Src/main.c:266:6:Error_Handler	1

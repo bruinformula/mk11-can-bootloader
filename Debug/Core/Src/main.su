@@ -1,0 +1,9 @@
+../Core/Src/main.c:83:6:check_bootmode	4	static
+../Core/Src/main.c:88:6:go_to_application	24	static,ignoring_inline_asm
+../Core/Src/main.c:98:6:HAL_CAN_RxFifo0MsgPendingCallback	16	static
+../Core/Src/main.c:106:6:process_command	16	static
+../Core/Src/main.c:114:6:send_ack_message	16	static
+../Core/Src/main.c:126:6:flash_firmware	4	static
+../Core/Src/main.c:136:5:main	48	static
+../Core/Src/main.c:218:6:SystemClock_Config	96	static
+../Core/Src/main.c:266:6:Error_Handler	4	static,ignoring_inline_asm

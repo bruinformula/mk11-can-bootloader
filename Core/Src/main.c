@@ -23,7 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stdbool.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -33,7 +33,16 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define BOOTLOADER_ADDR 0x08000000
+#define APPLICATION_ADDR 0x08004000
 
+#define REQUEST_FIRMWARE_UPDATE_ID 0x0F1
+#define FIRMWARE_UPDATE_DATA_ID 0xFD
+
+#define MICROCONTROLLER_ACK 0x01
+#define MICROCONTROLLER_ID 0x43
+
+#define BOOTLOADER_TIMEOUT 15000
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,17 +53,79 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+int count = 0;
+HAL_StatusTypeDef status;
 
+uint32_t TxMailbox;
+CAN_TxHeaderTypeDef TxHeader;
+uint8_t TxData[8];
+
+CAN_RxHeaderTypeDef RxHeader;
+uint8_t RxData[8];
+uint32_t start_time;
+
+bool bootload_requested;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+bool check_bootmode(void);
+void go_to_application(void);
+void process_command(CAN_RxHeaderTypeDef*, uint8_t*);
+void send_ack_message(CAN_TxHeaderTypeDef*, uint8_t*);
+void flash_firmware();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+bool check_bootmode(void) {
+	return 1;
+	// Done for now
+}
+
+void go_to_application(void) {
+	// Adjusting MSP and Reset Handler Pointer
+	uint32_t app_sp = *(volatile uint32_t*)APPLICATION_ADDR;
+	__set_MSP(app_sp);
+
+	uint32_t app_pc = *(volatile uint32_t*)(APPLICATION_ADDR + 4);
+	void (*app_reset_handler)(void) = (void*)app_pc;
+	app_reset_handler();
+}
+
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
+	if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader, RxData) != HAL_OK) {
+		return;
+	}
+	count++;
+	process_command(&RxHeader, RxData);
+}
+
+void process_command(CAN_RxHeaderTypeDef* rx_header, uint8_t* rx_data) {
+	// TODO: Proper handling for the actual firmware update
+	if (rx_header->StdId == REQUEST_FIRMWARE_UPDATE_ID && rx_data[0] == MICROCONTROLLER_ID) {
+		bootload_requested = 1;
+		send_ack_message(&TxHeader, TxData);
+	}
+}
+
+void send_ack_message(CAN_TxHeaderTypeDef* tx_header, uint8_t* tx_data) {
+	tx_header->IDE = CAN_ID_STD;
+	tx_header->StdId = MICROCONTROLLER_ACK;
+	tx_header->RTR = CAN_RTR_DATA;
+	tx_header->DLC = 2;
+
+	tx_data[0] = MICROCONTROLLER_ID;
+	tx_data[1] = 0x01;
+
+	HAL_CAN_AddTxMessage(&hcan1, tx_header, tx_data, &TxMailbox);
+}
+
+void flash_firmware() {
+	// TODO: Rewrite the flash memory..
+}
 
 /* USER CODE END 0 */
 
@@ -90,12 +161,49 @@ int main(void)
   MX_CAN1_Init();
   /* USER CODE BEGIN 2 */
 
+//  if (!checkBootmode()) {
+//	  // TODO: Adjusting checkBootmode()
+//	  jump_to_application();
+//  }
+
+//  start_time = HAL_GetTick();
+
+  CAN_FilterTypeDef sFilterConfig;
+
+  sFilterConfig.FilterBank = 0;
+  sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+  sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+  sFilterConfig.FilterIdHigh = 0x0000;
+  sFilterConfig.FilterIdLow = 0x0000;
+  sFilterConfig.FilterMaskIdHigh = 0x0000;
+  sFilterConfig.FilterMaskIdLow = 0x0000;
+  sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
+  sFilterConfig.FilterActivation = ENABLE;
+  sFilterConfig.SlaveStartFilterBank = 14;
+
+  HAL_CAN_ConfigFilter(&hcan1, &sFilterConfig);
+
+  HAL_CAN_Start(&hcan1);
+  HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+
+// TODO: A proper firmware update sequence
+//  while (HAL_GetTick() - start_time < BOOTLOADER_TIMEOUT) {
+//	  if (bootload_requested) {
+//		  send_ack_message();
+//		  flash_firmware();
+//	  }
+//  }
+//
+//  jump_to_application(); // In case of timeout, just jump to application
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+//	  send_ack_message(&TxHeader, TxData);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
